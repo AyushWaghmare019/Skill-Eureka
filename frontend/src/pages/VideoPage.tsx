@@ -4,211 +4,189 @@ import { ThumbsUp, Bookmark, Clock, Share2 } from 'lucide-react';
 import { useVideos } from '../context/VideoContext';
 import { useAuth } from '../context/AuthContext';
 import VideoPlayer from '../components/VideoPlayer';
-import VideoGrid from '../components/VideoGrid';
+
+function isUser(user: any): user is {
+  likedVideos: string[];
+  savedVideos: string[];
+  watchLaterVideos: string[];
+} {
+  return (
+    user &&
+    Array.isArray(user.likedVideos) &&
+    Array.isArray(user.savedVideos) &&
+    Array.isArray(user.watchLaterVideos)
+  );
+}
 
 const VideoPage = () => {
   const { id } = useParams<{ id: string }>();
   const { getVideo, getVideosByCreator } = useVideos();
-  const { 
-    getCreator, 
-    likeVideo, 
-    unlikeVideo, 
-    saveVideo, 
-    unsaveVideo, 
-    addToWatchLater, 
-    removeFromWatchLater, 
+  const {
+    getCreator,
+    likeVideo,
+    unlikeVideo,
+    saveVideo,
+    unsaveVideo,
+    addToWatchLater,
+    removeFromWatchLater,
     currentUser,
-    isAuthenticated
+    isAuthenticated,
   } = useAuth();
-  
-  const [video, setVideo] = useState(id ? getVideo(id) : undefined);
-  const [creator, setCreator] = useState(video ? getCreator(video.creatorId) : undefined);
-  const [relatedVideos, setRelatedVideos] = useState(
-    video ? getVideosByCreator(video.creatorId).filter(v => v.id !== id) : []
-  );
-  
+
+  const [video, setVideo] = useState<any>(null);
+  const [creator, setCreator] = useState<any>(null);
+  const [relatedVideos, setRelatedVideos] = useState<any[]>([]);
   const [isLiked, setIsLiked] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
   const [isWatchLater, setIsWatchLater] = useState(false);
-  
+  const [loading, setLoading] = useState(true);
+
   useEffect(() => {
-    if (id) {
-      const videoData = getVideo(id);
-      setVideo(videoData);
-      
-      if (videoData) {
-        const creatorData = getCreator(videoData.creatorId);
-        setCreator(creatorData);
-        
-        setRelatedVideos(
-          getVideosByCreator(videoData.creatorId).filter(v => v.id !== id)
-        );
+    const fetchData = async () => {
+      setLoading(true);
+      if (id) {
+        const videoData = await getVideo(id);
+        setVideo(videoData);
+
+        if (videoData) {
+          const creatorData = await getCreator(videoData.creatorId);
+          setCreator(creatorData);
+
+          const vids = await getVideosByCreator(videoData.creatorId);
+          setRelatedVideos((vids || []).filter((v: any) => v.id !== id));
+        }
       }
-    }
+      setLoading(false);
+    };
+    fetchData();
   }, [id, getVideo, getCreator, getVideosByCreator]);
-  
+
   useEffect(() => {
-    if (currentUser && video) {
+    if (currentUser && video && isUser(currentUser)) {
       setIsLiked(currentUser.likedVideos.includes(video.id));
       setIsSaved(currentUser.savedVideos.includes(video.id));
       setIsWatchLater(currentUser.watchLaterVideos.includes(video.id));
+    } else {
+      setIsLiked(false);
+      setIsSaved(false);
+      setIsWatchLater(false);
     }
   }, [currentUser, video]);
-  
-  const handleLikeToggle = () => {
+
+  const handleLikeToggle = async () => {
     if (!isAuthenticated) {
       window.location.href = '/login';
       return;
     }
-    
-    if (video) {
+    if (video && isUser(currentUser)) {
       if (isLiked) {
-        unlikeVideo(video.id);
+        await unlikeVideo(video.id);
       } else {
-        likeVideo(video.id);
+        await likeVideo(video.id);
       }
       setIsLiked(!isLiked);
     }
   };
-  
-  const handleSaveToggle = () => {
+
+  const handleSaveToggle = async () => {
     if (!isAuthenticated) {
       window.location.href = '/login';
       return;
     }
-    
-    if (video) {
+    if (video && isUser(currentUser)) {
       if (isSaved) {
-        unsaveVideo(video.id);
+        await unsaveVideo(video.id);
       } else {
-        saveVideo(video.id);
+        await saveVideo(video.id);
       }
       setIsSaved(!isSaved);
     }
   };
-  
-  const handleWatchLaterToggle = () => {
+
+  const handleWatchLaterToggle = async () => {
     if (!isAuthenticated) {
       window.location.href = '/login';
       return;
     }
-    
-    if (video) {
+    if (video && isUser(currentUser)) {
       if (isWatchLater) {
-        removeFromWatchLater(video.id);
+        await removeFromWatchLater(video.id);
       } else {
-        addToWatchLater(video.id);
+        await addToWatchLater(video.id);
       }
       setIsWatchLater(!isWatchLater);
     }
   };
-  
+
+  if (loading) {
+    return (
+      <div className="min-h-[60vh] flex items-center justify-center animate-pulse text-white">
+        <div>Loading...</div>
+      </div>
+    );
+  }
+
   if (!video || !creator) {
     return (
-      <div className="text-center py-10">
+      <div className="text-center py-10 text-white">
         <p>Video not found</p>
       </div>
     );
   }
 
   return (
-    <div className="container mx-auto px-4 py-6">
-      <div className="flex flex-col lg:flex-row gap-6">
-        {/* Video and Info Column */}
+    <div className="min-h-screen bg-gradient-to-b from-[#031B33] to-[#00111D] px-4 py-8 text-white animate-fadeIn">
+      <div className="max-w-7xl mx-auto flex flex-col lg:flex-row gap-10">
         <div className="w-full lg:w-2/3">
-          {/* Video Player */}
           <VideoPlayer videoUrl={video.videoUrl} title={video.title} />
-          
-          {/* Video Info */}
-          <div className="mt-4 ">
-            <h1 className="text-xl md:text-2xl font-bold">{video.title}</h1>
-            
-            {/* Creator Info */}
-            <div className="mt-4 flex items-center">
-              <Link to={`/creator/${creator.id}`} className="flex items-center">
-                <div className="w-10 h-10 rounded-full overflow-hidden">
-                  <img 
-                    src={creator.profilePic} 
-                    alt={creator.name} 
-                    className="w-full h-full object-cover" 
-                  />
+
+          <div className="mt-6 bg-white/5 rounded-2xl p-6 shadow-xl backdrop-blur-sm">
+            <h1 className="text-2xl font-bold mb-2 text-white drop-shadow-md">{video.title}</h1>
+            <div className="flex items-center gap-3 mb-4">
+              <Link to={`/creator/${creator.id}`} className="flex items-center gap-2 hover:scale-105 transition-transform">
+                <div className="w-10 h-10 rounded-full overflow-hidden ring-2 ring-purple-500">
+                  <img src={creator.profilePic} alt={creator.name} className="w-full h-full object-cover" />
                 </div>
-                <span className="ml-2 font-medium">{creator.name}</span>
+                <span className="font-semibold text-purple-300">{creator.name}</span>
               </Link>
             </div>
-            
-            {/* Action Buttons */}
-            <div className="mt-4 flex flex-wrap gap-3">
-              <button 
-                onClick={handleLikeToggle}
-                className={`flex items-center space-x-1 px-4 py-2 rounded-full ${
-                  isLiked 
-                    ? 'bg-blue-300' 
-                    : 'bg-gray-300 hover:bg-primary-dark'
-                } transition-colors`}
-              >
-                <ThumbsUp className={`h-5 w-5 ${isLiked ? 'text-blue-600' : 'text-gray-900'}`} />
-                <span>Like</span>
+            <div className="flex flex-wrap gap-4">
+              <button onClick={handleLikeToggle} className={`flex items-center gap-2 px-5 py-2 rounded-full font-medium transition-all shadow-lg ${isLiked ? 'bg-purple-600 text-white' : 'bg-white text-black hover:bg-purple-200'}`}>
+                <ThumbsUp className="h-5 w-5" />
+                Like
               </button>
-              
-              <button 
-                onClick={handleSaveToggle}
-                className={`flex items-center space-x-1 px-4 py-2 rounded-full ${
-                  isSaved 
-                    ? 'bg-blue-300' 
-                    : 'bg-gray-300 hover:bg-primary-dark'
-                } transition-colors`}
-              >
-                <Bookmark className={`h-5 w-5 ${isSaved ? 'text-blue-600' : 'text-gray-900'}`} />
-                <span>Save</span>
+              <button onClick={handleSaveToggle} className={`flex items-center gap-2 px-5 py-2 rounded-full font-medium transition-all shadow-lg ${isSaved ? 'bg-purple-600 text-white' : 'bg-white text-black hover:bg-purple-200'}`}>
+                <Bookmark className="h-5 w-5" />
+                Save
               </button>
-              
-              <button 
-                onClick={handleWatchLaterToggle}
-                className={`flex items-center space-x-1 px-4 py-2 rounded-full ${
-                  isWatchLater 
-                    ? 'bg-blue-300' 
-                    : 'bg-gray-300 hover:bg-primary-dark'
-                } transition-colors`}
-              >
-                <Clock className={`h-5 w-5 ${isWatchLater ? 'text-blue-600' : 'text-gray-900'}`} />
-                <span>Watch Later</span>
+              <button onClick={handleWatchLaterToggle} className={`flex items-center gap-2 px-5 py-2 rounded-full font-medium transition-all shadow-lg ${isWatchLater ? 'bg-purple-600 text-white' : 'bg-white text-black hover:bg-purple-200'}`}>
+                <Clock className="h-5 w-5" />
+                Watch Later
               </button>
-              
-              <button className="flex items-center space-x-1 px-4 py-2 rounded-full bg-blue-300 hover:bg-gray-400 transition-colors">
-                <Share2 className="h-5 w-5 text-gray-600" />
-                <span>Share</span>
+              <button className="flex items-center gap-2 px-5 py-2 rounded-full font-medium bg-white text-black hover:bg-purple-200 transition-all shadow-lg">
+                <Share2 className="h-5 w-5" />
+                Share
               </button>
             </div>
           </div>
         </div>
-        
-        {/* Related Videos Column */}
+
         <div className="w-full lg:w-1/3">
-          <h2 className="text-xl font-semibold mb-4">More from this creator</h2>
+          <h2 className="text-xl font-semibold mb-4 text-purple-200">More from this creator</h2>
           <div className="space-y-4">
-            {relatedVideos.map(video => (
-              <Link 
-                to={`/video/${video.id}`} 
-                key={video.id}
-                className="flex gap-3 p-2 hover:bg-gray-50 rounded-lg transition-colors"
-              >
-                <div className="w-40 h-24 bg-primary-light rounded overflow-hidden flex-shrink-0">
-                  <img 
-                    src={video.thumbnail} 
-                    alt={video.title} 
-                    className="w-full h-full object-cover" 
-                  />
+            {relatedVideos.map((video) => (
+              <Link to={`/video/${video.id}`} key={video.id} className="flex gap-3 p-3 rounded-xl bg-white/10 hover:bg-white/20 transition-all backdrop-blur-md shadow-md">
+                <div className="w-32 h-20 rounded-xl overflow-hidden">
+                  <img src={video.thumbnail} alt={video.title} className="w-full h-full object-cover scale-105 hover:scale-110 transition-transform" />
                 </div>
-                <div>
-                  <h3 className="font-medium line-clamp-2">{video.title}</h3>
-                  <p className="text-sm text-gray-600 mt-1">{creator.name}</p>
+                <div className="flex-1">
+                  <h3 className="font-semibold text-white line-clamp-2">{video.title}</h3>
+                  <p className="text-sm text-purple-300 mt-1">{creator.name}</p>
                 </div>
               </Link>
             ))}
-            
             {relatedVideos.length === 0 && (
-              <p className="text-gray-500">No more videos from this creator</p>
+              <p className="text-gray-400 italic">No more videos from this creator</p>
             )}
           </div>
         </div>

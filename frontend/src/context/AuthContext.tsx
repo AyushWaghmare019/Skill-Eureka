@@ -1,26 +1,26 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { mockUsers, mockCreators } from '../data/mockData';
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { authAPI, userAPI, creatorAPI, uploadAPI } from '../services/api.js';
 
-type User = {
+// Types for User and Creator
+export type User = {
   id: string;
   name: string;
   username: string;
   email?: string;
   bio: string;
   profilePic: string;
-  isCreator: boolean;
+  isCreator: false;
   followingCreators: string[];
   likedVideos: string[];
   savedVideos: string[];
   watchLaterVideos: string[];
-  history: string[];
 };
 
-type Creator = {
+export type Creator = {
   id: string;
   name: string;
   username: string;
-  email: string;
+  email?: string;
   bio: string;
   profilePic: string;
   youtubeChannel?: string;
@@ -28,374 +28,297 @@ type Creator = {
   linkedinProfile?: string;
   followers: string[];
   videos: string[];
-  confirmationCode?: string;
   isVerified: boolean;
+  followersCount?: number;
+  videosCount?: number;
+  isCreator: true;
 };
 
+type CurrentUser = User | Creator;
+
 interface AuthContextType {
-  currentUser: User | null;
+  currentUser: CurrentUser | null;
   isAuthenticated: boolean;
   isCreator: boolean;
-  login: (username: string, password: string) => boolean;
-  signup: (userData: Partial<User>) => void;
+  loading: boolean;
+  login: (username: string, password: string, type?: 'user' | 'creator') => Promise<boolean>;
+  signup: (userData: Partial<User> | Partial<Creator>, type?: 'user' | 'creator') => Promise<boolean>;
   logout: () => void;
-  updateUserProfile: (userData: Partial<User>, profilePic?: File) => void;
-  applyAsCreator: (creatorData: Partial<Creator>) => string;
-  verifyCreator: (email: string, code: string) => boolean;
-  followCreator: (creatorId: string) => void;
-  unfollowCreator: (creatorId: string) => void;
-  getCreator: (creatorId: string) => Creator | undefined;
-  getAllCreators: () => Creator[];
-  likeVideo: (videoId: string) => void;
-  unlikeVideo: (videoId: string) => void;
-  saveVideo: (videoId: string) => void;
-  unsaveVideo: (videoId: string) => void;
-  addToWatchLater: (videoId: string) => void;
-  removeFromWatchLater: (videoId: string) => void;
-  addToHistory: (videoId: string) => void;
-  handleProfilePicUpload: (file: File) => Promise<string>;
+  updateUserProfile: (userData: Partial<User>, profilePic?: File) => Promise<boolean>;
+  getCreator: (creatorId: string) => Promise<Creator | null>;
+  refreshUserData: () => Promise<void>;
+  followCreator: (creatorId: string) => Promise<void>;
+  unfollowCreator: (creatorId: string) => Promise<void>;
+  likeVideo: (videoId: string) => Promise<void>;
+  unlikeVideo: (videoId: string) => Promise<void>;
+  saveVideo: (videoId: string) => Promise<void>;
+  unsaveVideo: (videoId: string) => Promise<void>;
+  addToWatchLater: (videoId: string) => Promise<void>;
+  removeFromWatchLater: (videoId: string) => Promise<void>;
+  applyAsCreator: (data: { name: string; email: string; youtubeChannel?: string; reason: string }) => Promise<string>;
+  verifyCreator: (email: string, confirmationCode: string) => Promise<boolean>;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [users, setUsers] = useState<User[]>([]);
-  const [creators, setCreators] = useState<Creator[]>([]);
+  const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isCreator, setIsCreator] = useState(false);
+  const [loading, setLoading] = useState(true);
 
+  // Rehydrate from localStorage on load
   useEffect(() => {
-    // Initialize with mock data
-    setUsers(mockUsers);
-    setCreators(mockCreators);
-    
-    // Check for saved user session
     const savedUser = localStorage.getItem('currentUser');
-    if (savedUser) {
+    const savedToken = localStorage.getItem('authToken');
+    if (savedUser && savedToken) {
       const user = JSON.parse(savedUser);
       setCurrentUser(user);
       setIsAuthenticated(true);
       setIsCreator(user.isCreator);
     }
+    setLoading(false);
   }, []);
 
-  const login = (username: string, password: string) => {
-    // In a real app, this would validate against the backend
-    const user = users.find(u => u.username === username);
-    const creator = creators.find(c => c.username === username && c.isVerified);
-    
-    if (user) {
-      setCurrentUser(user);
-      setIsAuthenticated(true);
-      setIsCreator(false);
-      localStorage.setItem('currentUser', JSON.stringify(user));
-      return true;
+  // Always keep localStorage in sync when currentUser changes
+  useEffect(() => {
+    if (currentUser && isAuthenticated) {
+      localStorage.setItem('currentUser', JSON.stringify(currentUser));
     }
-    
-    if (creator) {
-      const creatorAsUser: User = {
-        id: creator.id,
-        name: creator.name,
-        username: creator.username,
-        bio: creator.bio,
-        profilePic: creator.profilePic,
-        isCreator: true,
-        followingCreators: [],
-        likedVideos: [],
-        savedVideos: [],
-        watchLaterVideos: [],
-        history: []
-      };
-      
-      setCurrentUser(creatorAsUser);
-      setIsAuthenticated(true);
-      setIsCreator(true);
-      localStorage.setItem('currentUser', JSON.stringify(creatorAsUser));
-      return true;
+  }, [currentUser, isAuthenticated]);
+
+  const refreshUserData = async () => {
+    try {
+      if (!currentUser) return;
+      if (currentUser.isCreator) {
+        const response = await creatorAPI.getById(currentUser.id);
+        const updated = { ...response.data, isCreator: true };
+        setCurrentUser(updated);
+        localStorage.setItem('currentUser', JSON.stringify(updated));
+      } else {
+        const response = await userAPI.getProfile();
+        const updated = { ...response.data, isCreator: false };
+        setCurrentUser(updated);
+        localStorage.setItem('currentUser', JSON.stringify(updated));
+      }
+    } catch (error) {
+      console.error('Failed to refresh user data:', error);
     }
-    
-    return false;
   };
 
-  const signup = (userData: Partial<User>) => {
-    const newUser: User = {
-      id: `user-${Date.now()}`,
-      name: userData.name || 'User',
-      username: userData.username || `user${Date.now()}`,
-      bio: userData.bio || '',
-      profilePic: userData.profilePic || 'https://via.placeholder.com/150',
-      isCreator: false,
-      followingCreators: [],
-      likedVideos: [],
-      savedVideos: [],
-      watchLaterVideos: [],
-      history: []
-    };
-    
-    setUsers(prev => [...prev, newUser]);
-    setCurrentUser(newUser);
-    setIsAuthenticated(true);
-    localStorage.setItem('currentUser', JSON.stringify(newUser));
+  const login = async (username: string, password: string, type: 'user' | 'creator' = 'user') => {
+    try {
+      const response = type === 'creator'
+        ? await authAPI.loginCreator(username, password)
+        : await authAPI.loginUser(username, password);
+
+      const { token, user, creator } = response.data;
+      localStorage.setItem('authToken', token);
+
+      if (type === 'creator') {
+        let creatorProfile = creator;
+        if (!creatorProfile) {
+          const profileRes = await creatorAPI.getById(response.data.id);
+          creatorProfile = profileRes.data;
+        }
+        const creatorUser = { ...creatorProfile, isCreator: true };
+        setCurrentUser(creatorUser);
+        setIsCreator(true);
+        setIsAuthenticated(true);
+        localStorage.setItem('currentUser', JSON.stringify(creatorUser));
+      } else {
+        let userProfile = user;
+        if (!userProfile) {
+          const profileRes = await userAPI.getProfile();
+          userProfile = profileRes.data;
+        }
+        const normalUser = { ...userProfile, isCreator: false };
+        setCurrentUser(normalUser);
+        setIsCreator(false);
+        setIsAuthenticated(true);
+        localStorage.setItem('currentUser', JSON.stringify(normalUser));
+      }
+      return true;
+    } catch (error) {
+      console.error('Login error:', error);
+      return false;
+    }
+  };
+
+  const signup = async (userData: Partial<User> | Partial<Creator>, type: 'user' | 'creator' = 'user') => {
+    try {
+      const response = type === 'creator'
+        ? await authAPI.registerCreator(userData)
+        : await authAPI.registerUser(userData);
+
+      const { token, user, creator } = response.data;
+      localStorage.setItem('authToken', token);
+
+      if (type === 'creator') {
+        let creatorProfile = creator;
+        if (!creatorProfile) {
+          const profileRes = await creatorAPI.getById(response.data.id);
+          creatorProfile = profileRes.data;
+        }
+        const creatorUser = { ...creatorProfile, isCreator: true };
+        setCurrentUser(creatorUser);
+        setIsCreator(true);
+        setIsAuthenticated(true);
+        localStorage.setItem('currentUser', JSON.stringify(creatorUser));
+      } else {
+        let userProfile = user;
+        if (!userProfile) {
+          const profileRes = await userAPI.getProfile();
+          userProfile = profileRes.data;
+        }
+        const normalUser = { ...userProfile, isCreator: false };
+        setCurrentUser(normalUser);
+        setIsCreator(false);
+        setIsAuthenticated(true);
+        localStorage.setItem('currentUser', JSON.stringify(normalUser));
+      }
+      return true;
+    } catch (error) {
+      console.error('Signup error:', error);
+      return false;
+    }
   };
 
   const logout = () => {
     setCurrentUser(null);
     setIsAuthenticated(false);
     setIsCreator(false);
+    localStorage.removeItem('authToken');
     localStorage.removeItem('currentUser');
   };
 
-  const handleProfilePicUpload = async (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => {
-        if (typeof reader.result === 'string') {
-          resolve(reader.result);
-        } else {
-          reject(new Error('Failed to read file'));
-        }
-      };
-      reader.onerror = () => reject(reader.error);
-      reader.readAsDataURL(file);
-    });
-  };
-
   const updateUserProfile = async (userData: Partial<User>, profilePic?: File) => {
-    if (!currentUser) return;
-    
-    let profilePicUrl = userData.profilePic;
-    if (profilePic) {
-      try {
-        profilePicUrl = await handleProfilePicUpload(profilePic);
-      } catch (error) {
-        console.error('Failed to upload profile picture:', error);
+    try {
+      let profilePicUrl = userData.profilePic;
+      if (profilePic) {
+        const uploadResponse = await uploadAPI.uploadProfilePic(profilePic);
+        profilePicUrl = uploadResponse.data.url;
       }
-    }
-    
-    const updatedUser = { 
-      ...currentUser, 
-      ...userData,
-      profilePic: profilePicUrl || currentUser.profilePic 
-    };
-    
-    setCurrentUser(updatedUser);
-    
-    if (currentUser.isCreator) {
-      setCreators(creators.map(c => 
-        c.id === currentUser.id ? { ...c, ...userData, profilePic: profilePicUrl || c.profilePic } : c
-      ));
-    } else {
-      setUsers(users.map(u => 
-        u.id === currentUser.id ? { ...u, ...userData, profilePic: profilePicUrl || u.profilePic } : u
-      ));
-    }
-    
-    localStorage.setItem('currentUser', JSON.stringify(updatedUser));
-  };
-
-  const generateConfirmationCode = () => {
-    const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-    let result = '';
-    for (let i = 0; i < 8; i++) {
-      result += characters.charAt(Math.floor(Math.random() * characters.length));
-    }
-    return result;
-  };
-
-  const applyAsCreator = (creatorData: Partial<Creator>) => {
-    const confirmationCode = generateConfirmationCode();
-    
-    const newCreator: Creator = {
-      id: `creator-${Date.now()}`,
-      name: creatorData.name || 'Creator',
-      username: creatorData.username || `creator${Date.now()}`,
-      email: creatorData.email || '',
-      bio: creatorData.bio || '',
-      profilePic: creatorData.profilePic || 'https://via.placeholder.com/150',
-      youtubeChannel: creatorData.youtubeChannel || '',
-      instagramHandle: creatorData.instagramHandle || '',
-      linkedinProfile: creatorData.linkedinProfile || '',
-      followers: [],
-      videos: [],
-      confirmationCode,
-      isVerified: false
-    };
-    
-    setCreators(prev => [...prev, newCreator]);
-    return confirmationCode;
-  };
-
-  const verifyCreator = (email: string, code: string) => {
-    const creatorIndex = creators.findIndex(c => c.email === email && c.confirmationCode === code);
-    
-    if (creatorIndex >= 0) {
-      const updatedCreators = [...creators];
-      updatedCreators[creatorIndex] = {
-        ...updatedCreators[creatorIndex],
-        isVerified: true
-      };
-      
-      setCreators(updatedCreators);
+      const updateData = { ...userData, profilePic: profilePicUrl };
+      const response = await userAPI.updateProfile(updateData);
+      const updatedUser = { ...currentUser, ...response.data.user };
+      setCurrentUser(updatedUser as CurrentUser);
+      localStorage.setItem('currentUser', JSON.stringify(updatedUser));
       return true;
-    }
-    
-    return false;
-  };
-
-  const followCreator = (creatorId: string) => {
-    if (!currentUser) return;
-    
-    // Update current user
-    if (!currentUser.followingCreators.includes(creatorId)) {
-      const updatedUser = {
-        ...currentUser,
-        followingCreators: [...currentUser.followingCreators, creatorId]
-      };
-      setCurrentUser(updatedUser);
-      localStorage.setItem('currentUser', JSON.stringify(updatedUser));
-      
-      // Update users array
-      setUsers(users.map(u => 
-        u.id === currentUser.id ? updatedUser : u
-      ));
-    }
-    
-    // Update creator's followers
-    setCreators(creators.map(c => {
-      if (c.id === creatorId && !c.followers.includes(currentUser.id)) {
-        return {
-          ...c,
-          followers: [...c.followers, currentUser.id]
-        };
-      }
-      return c;
-    }));
-  };
-
-  const unfollowCreator = (creatorId: string) => {
-    if (!currentUser) return;
-    
-    // Update current user
-    const updatedUser = {
-      ...currentUser,
-      followingCreators: currentUser.followingCreators.filter(id => id !== creatorId)
-    };
-    setCurrentUser(updatedUser);
-    localStorage.setItem('currentUser', JSON.stringify(updatedUser));
-    
-    // Update users array
-    setUsers(users.map(u => 
-      u.id === currentUser.id ? updatedUser : u
-    ));
-    
-    // Update creator's followers
-    setCreators(creators.map(c => {
-      if (c.id === creatorId) {
-        return {
-          ...c,
-          followers: c.followers.filter(id => id !== currentUser.id)
-        };
-      }
-      return c;
-    }));
-  };
-
-  const getCreator = (creatorId: string) => {
-    return creators.find(c => c.id === creatorId);
-  };
-
-  const getAllCreators = () => {
-    return creators.filter(c => c.isVerified);
-  };
-
-  const likeVideo = (videoId: string) => {
-    if (!currentUser) return;
-    
-    if (!currentUser.likedVideos.includes(videoId)) {
-      const updatedUser = {
-        ...currentUser,
-        likedVideos: [...currentUser.likedVideos, videoId]
-      };
-      setCurrentUser(updatedUser);
-      localStorage.setItem('currentUser', JSON.stringify(updatedUser));
+    } catch (error) {
+      console.error('Update profile error:', error);
+      return false;
     }
   };
 
-  const unlikeVideo = (videoId: string) => {
-    if (!currentUser) return;
-    
-    const updatedUser = {
-      ...currentUser,
-      likedVideos: currentUser.likedVideos.filter(id => id !== videoId)
-    };
-    setCurrentUser(updatedUser);
-    localStorage.setItem('currentUser', JSON.stringify(updatedUser));
-  };
-
-  const saveVideo = (videoId: string) => {
-    if (!currentUser) return;
-    
-    if (!currentUser.savedVideos.includes(videoId)) {
-      const updatedUser = {
-        ...currentUser,
-        savedVideos: [...currentUser.savedVideos, videoId]
-      };
-      setCurrentUser(updatedUser);
-      localStorage.setItem('currentUser', JSON.stringify(updatedUser));
+  const getCreator = async (creatorId: string) => {
+    try {
+      const response = await creatorAPI.getById(creatorId);
+      return response.data;
+    } catch (error) {
+      return null;
     }
   };
 
-  const unsaveVideo = (videoId: string) => {
-    if (!currentUser) return;
-    
-    const updatedUser = {
-      ...currentUser,
-      savedVideos: currentUser.savedVideos.filter(id => id !== videoId)
-    };
-    setCurrentUser(updatedUser);
-    localStorage.setItem('currentUser', JSON.stringify(updatedUser));
-  };
-
-  const addToWatchLater = (videoId: string) => {
-    if (!currentUser) return;
-    
-    if (!currentUser.watchLaterVideos.includes(videoId)) {
-      const updatedUser = {
-        ...currentUser,
-        watchLaterVideos: [...currentUser.watchLaterVideos, videoId]
-      };
-      setCurrentUser(updatedUser);
-      localStorage.setItem('currentUser', JSON.stringify(updatedUser));
+  const followCreator = async (creatorId: string) => {
+    try {
+      await userAPI.followCreator(creatorId);
+      await refreshUserData();
+    } catch (error) {
+      console.error('Follow creator error:', error);
     }
   };
 
-  const removeFromWatchLater = (videoId: string) => {
-    if (!currentUser) return;
-    
-    const updatedUser = {
-      ...currentUser,
-      watchLaterVideos: currentUser.watchLaterVideos.filter(id => id !== videoId)
-    };
-    setCurrentUser(updatedUser);
-    localStorage.setItem('currentUser', JSON.stringify(updatedUser));
+  const unfollowCreator = async (creatorId: string) => {
+    try {
+      await userAPI.unfollowCreator(creatorId);
+      await refreshUserData();
+    } catch (error) {
+      console.error('Unfollow creator error:', error);
+    }
   };
 
-  const addToHistory = (videoId: string) => {
-    if (!currentUser) return;
-    
-    // Keep only the last 10 videos in history
-    const updatedHistory = [
-      videoId,
-      ...currentUser.history.filter(id => id !== videoId)
-    ].slice(0, 10);
-    
-    const updatedUser = {
-      ...currentUser,
-      history: updatedHistory
-    };
-    setCurrentUser(updatedUser);
-    localStorage.setItem('currentUser', JSON.stringify(updatedUser));
+  // --- VIDEO ACTIONS ---
+  const likeVideo = async (videoId: string) => {
+    try {
+      await userAPI.likeVideo(videoId);
+      await refreshUserData();
+    } catch (error) {
+      console.error('Like video error:', error);
+    }
+  };
+
+  const unlikeVideo = async (videoId: string) => {
+    try {
+      await userAPI.unlikeVideo(videoId);
+      await refreshUserData();
+    } catch (error) {
+      console.error('Unlike video error:', error);
+    }
+  };
+
+  const saveVideo = async (videoId: string) => {
+    try {
+      await userAPI.saveVideo(videoId);
+      await refreshUserData();
+    } catch (error) {
+      console.error('Save video error:', error);
+    }
+  };
+
+  const unsaveVideo = async (videoId: string) => {
+    try {
+      // Implement if you have an endpoint, otherwise leave as a stub
+      // await userAPI.unsaveVideo(videoId);
+      // await refreshUserData();
+      console.warn('unsaveVideo not implemented');
+    } catch (error) {
+      console.error('Unsave video error:', error);
+    }
+  };
+
+  const addToWatchLater = async (videoId: string) => {
+    try {
+      await userAPI.addToWatchLater(videoId);
+      await refreshUserData();
+    } catch (error) {
+      console.error('Add to watch later error:', error);
+    }
+  };
+
+  const removeFromWatchLater = async (videoId: string) => {
+    try {
+      // Implement if you have an endpoint, otherwise leave as a stub
+      // await userAPI.removeFromWatchLater(videoId);
+      // await refreshUserData();
+      console.warn('removeFromWatchLater not implemented');
+    } catch (error) {
+      console.error('Remove from watch later error:', error);
+    }
+  };
+
+  // --- APPLY AS CREATOR ---
+  const applyAsCreator = async (data: { name: string; email: string; youtubeChannel?: string; reason: string }) => {
+    try {
+      // If you have an API endpoint, use it:
+      // const res = await authAPI.applyCreator(data);
+      // return res.data.confirmationCode;
+
+      // For now, return a mock confirmation code:
+      return Math.random().toString(36).substring(2, 10);
+    } catch (error) {
+      throw new Error('Failed to apply as creator');
+    }
+  };
+
+  // --- VERIFY CREATOR ---
+  const verifyCreator = async (email: string, confirmationCode: string): Promise<boolean> => {
+    try {
+      await authAPI.verifyCreator(email, confirmationCode);
+      return true;
+    } catch (error) {
+      return false;
+    }
   };
 
   return (
@@ -403,24 +326,23 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       currentUser,
       isAuthenticated,
       isCreator,
+      loading,
       login,
       signup,
       logout,
       updateUserProfile,
-      applyAsCreator,
-      verifyCreator,
+      getCreator,
+      refreshUserData,
       followCreator,
       unfollowCreator,
-      getCreator,
-      getAllCreators,
       likeVideo,
       unlikeVideo,
       saveVideo,
       unsaveVideo,
       addToWatchLater,
       removeFromWatchLater,
-      addToHistory,
-      handleProfilePicUpload
+      applyAsCreator,
+      verifyCreator,
     }}>
       {children}
     </AuthContext.Provider>

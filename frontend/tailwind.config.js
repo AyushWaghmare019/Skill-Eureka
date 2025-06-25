@@ -3,10 +3,59 @@ export default {
   content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
   theme: {
     extend: {
+
+  
+    animation: {
+      'fade-in': 'fadeIn 1s ease-out forwards',
+      'slide-in-top': 'slideInTop 0.8s ease-out forwards',
+      'pop-in': 'popIn 0.5s ease-out forwards',
+      'float1': 'float1 6s ease-in-out infinite',
+      'float2': 'float2 8s ease-in-out infinite',
+    
+    'slide-in': 'slideIn 0.6s ease-out',
+     'bounce-slow': 'bounceSlow 1s infinite',
+     'fade-in-fast': 'fadeInFast 0.3s ease-out',
+    },
+    keyframes: {
+     fadeIn: {
+      '0%': { opacity: 0, transform: 'scale(0.95)' },
+      '100%': { opacity: 1, transform: 'scale(1)' },
+    },
+     fadeInFast: {
+      '0%': { opacity: 0, transform: 'scale(0.95)' },
+      '100%': { opacity: 1, transform: 'scale(1)' },
+    },
+     bounceSlow: {
+      '0%, 100%': { transform: 'translateY(0)' },
+      '50%': { transform: 'translateY(-6%)' },
+    },
+      slideInTop: {
+        '0%': { opacity: 0, transform: 'translateY(-40px)' },
+        '100%': { opacity: 1, transform: 'translateY(0)' },
+      },
+      slideIn: {
+      '0%': { opacity: 0, transform: 'translateY(30px)' },
+      '100%': { opacity: 1, transform: 'translateY(0)' },
+    },
+      popIn: {
+        '0%': { opacity: 0, transform: 'scale(0.95)' },
+        '100%': { opacity: 1, transform: 'scale(1)' },
+      },
+      float1: {
+        '0%, 100%': { transform: 'translateY(0)' },
+        '50%': { transform: 'translateY(-12px)' },
+      },
+      float2: {
+        '0%, 100%': { transform: 'translateY(0)' },
+        '50%': { transform: 'translateY(14px)' },
+      },
       fontFamily: {
         sans: ['Inter', 'sans-serif'],
       },
       colors: {
+        
+      primary: '#0047AB',
+      secondary: '#020E1E',
         primary: {
          // mine: '#E6F5FF',
           light: '#E1F3FE',
@@ -47,8 +96,35 @@ export default {
       transitionProperty: {
         'height': 'height',
         'spacing': 'margin, padding',
-      }
+      }, 
+     
+    animation: {
+      'float': 'float 6s ease-in-out infinite',
+      'bounce-slow': 'bounce 4s infinite',
+    },
+    keyframes: {
+      float: {
+        '0%, 100%': { transform: 'translateY(0)' },
+        '50%': { transform: 'translateY(-6px)' },
+      },
+    },
+    extend: {
+  animation: {
+    'fade-in': 'fadeIn 1s ease-out',
+    'fade-in-slow': 'fadeIn 1.5s ease-out',
+  },
+  keyframes: {
+    fadeIn: {
+      '0%': { opacity: 0, transform: 'translateY(10px)' },
+      '100%': { opacity: 1, transform: 'translateY(0)' },
     },
   },
+}
+
+  
+
+    },
+  },
+},
   plugins: [],
 };

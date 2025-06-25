@@ -1,60 +1,46 @@
-import { Link } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+// src/components/CreatorCard.tsx
 
-type CreatorCardProps = {
+// 1. Import React (optional for React 17+), and types if needed
+import React from 'react';
+
+// 2. Define the Creator type (or import it if you already have it)
+export type Creator = {
   id: string;
   name: string;
-  profilePic: string;
-  followers: string[];
+  bio: string;
+  profilePic?: string;
+  // Add other fields as needed
 };
 
-const CreatorCard = ({ id, name, profilePic, followers }: CreatorCardProps) => {
-  const { currentUser, followCreator, unfollowCreator, isAuthenticated } = useAuth();
+// 3. Define the props interface
+export interface CreatorCardProps {
+  creator: Creator;
+}
 
-  const isFollowing = currentUser?.followingCreators.includes(id);
-  
-  const handleFollowClick = () => {
-    if (!isAuthenticated) {
-      // Redirect to login if not authenticated
-      window.location.href = '/login';
-      return;
-    }
-    
-    if (isFollowing) {
-      unfollowCreator(id);
-    } else {
-      followCreator(id);
-    }
-  };
-
+// 4. The CreatorCard component
+const CreatorCard: React.FC<CreatorCardProps> = ({ creator }) => {
   return (
-    <div className=" bg-primary-light rounded-lg shadow-card overflow-hidden">
-      <Link to={`/creator/${id}`} className="block">
-        <div className="w-full aspect-video bg-primary-light">
-          <img 
-            src={profilePic} 
-            alt={name} 
-            className="w-full h-full object-cover" 
-          />
-        </div>
-        <div className="p-4">
-          <h3 className="font-semibold text-lg">{name}</h3>
-          <p className="text-sm text-gray-600">{followers.length} followers</p>
-        </div>
-      </Link>
+   <div className="card p-6 flex flex-col items-center text-center bg-[#0b1c2c] text-white rounded-xl shadow-lg border border-cyan-500/20 transition-transform duration-300 hover:scale-[1.03] hover:shadow-cyan-500/30 hover:shadow-2xl animate-fade-in backdrop-blur-sm">
+  <div className="relative w-24 h-24 mb-4">
+    <img
+      src={creator.profilePic || '/default-profile.png'}
+      alt={creator.name}
+      className="w-24 h-24 rounded-full object-cover border-4 border-cyan-400 shadow-md hover:shadow-cyan-300 transition duration-300"
+    />
+    <div className="absolute bottom-0 right-0 w-4 h-4 bg-green-400 rounded-full border-2 border-[#0b1c2c]" title="Active now"></div>
+  </div>
 
-      <div className="px-4 pb-4">
-        <button
-          onClick={handleFollowClick}
-          className={`w-full py-2 rounded-md font-medium transition-colors ${
-            isFollowing 
-              ? 'btn-secondary' : 'btn-primary'
-          }`}
-        >
-          {isFollowing ? 'Following' : 'Follow'}
-        </button>
-      </div>
-    </div>
+  <h2 className="text-lg font-bold text-cyan-300 hover:text-cyan-400 transition">
+    {creator.name}
+  </h2>
+
+  <p className="text-gray-300 text-sm mt-1 hover:text-white transition duration-300">
+    {creator.bio}
+  </p>
+
+  {/* Add more details or social icons if needed */}
+</div>
+
   );
 };
 

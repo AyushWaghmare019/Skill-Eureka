@@ -1,7 +1,8 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useAuth } from './AuthContext';
 import { useVideos, Video } from './VideoContext';
-import { mockNotifications } from '../data/mockData';
+// import { mockNotifications } from '../data/mockData';
+import { userAPI } from '../services/api.js'; // <-- Use your backend API
 
 export type Notification = {
   id: string;
@@ -18,8 +19,9 @@ interface NotificationContextType {
   unreadCount: number;
   markAsRead: (notificationId: string) => void;
   markAllAsRead: () => void;
-  createNotification: (creatorId: string, videoId: string) => void;
+  createNotification: (creatorId: string, videoId: string) => Promise<void>;
   getNotificationsForUser: () => Notification[];
+  fetchNotifications: () => Promise<void>;
 }
 
 const NotificationContext = createContext<NotificationContextType | null>(null);
@@ -29,10 +31,22 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
   const { currentUser } = useAuth();
   const { getVideo } = useVideos();
 
+  // Fetch notifications from backend
+  const fetchNotifications = async () => {
+    if (!currentUser) return;
+    try {
+      const res = await userAPI.getNotifications();
+      setNotifications(res.data || []);
+    } catch (error) {
+      console.error('Failed to fetch notifications:', error);
+      setNotifications([]);
+    }
+  };
+
   useEffect(() => {
-    // Initialize with mock data
-    setNotifications(mockNotifications);
-  }, []);
+    fetchNotifications();
+    // eslint-disable-next-line
+  }, [currentUser]);
 
   const unreadCount = notifications.filter(
     n => !n.isRead && n.userId === currentUser?.id
@@ -46,11 +60,12 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
           : notification
       )
     );
+    // Optionally, call backend to mark as read
+    userAPI.markNotificationRead(notificationId).catch(() => {});
   };
 
   const markAllAsRead = () => {
     if (!currentUser) return;
-    
     setNotifications(prevNotifications =>
       prevNotifications.map(notification =>
         notification.userId === currentUser.id
@@ -58,16 +73,17 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
           : notification
       )
     );
+    // Optionally, call backend to mark all as read
+    // userAPI.markAllNotificationsRead().catch(() => {});
   };
 
-  const createNotification = (creatorId: string, videoId: string) => {
+  // Async because getVideo may be async
+  const createNotification = async (creatorId: string, videoId: string) => {
     if (!currentUser) return;
-    
-    // Get the video details
-    const video = getVideo(videoId);
+    // Get the video details (async)
+    const video = await getVideo(videoId);
     if (!video) return;
-    
-    // Create notifications for all users following this creator
+
     const newNotification: Notification = {
       id: `notification-${Date.now()}`,
       userId: currentUser.id,
@@ -77,13 +93,16 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
       isRead: false,
       createdAt: new Date().toISOString()
     };
-    
+
     setNotifications(prev => [newNotification, ...prev]);
+    // Optionally, send to backend
+    // await userAPI.createNotification(newNotification);
   };
 
   const getNotificationsForUser = () => {
     if (!currentUser) return [];
-    return notifications.filter(n => n.userId === currentUser.id)
+    return notifications
+      .filter(n => n.userId === currentUser.id)
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   };
 
@@ -94,6 +113,7 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
     markAllAsRead,
     createNotification,
     getNotificationsForUser,
+    fetchNotifications,
   };
 
   return (

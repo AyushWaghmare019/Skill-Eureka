@@ -1,96 +1,126 @@
-import { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { useVideos } from '../context/VideoContext';
+import { useVideos, Video } from '../context/VideoContext';
 import VideoGrid from '../components/VideoGrid';
+
+// Type guard for user
+function isUser(user: any): user is {
+  likedVideos: string[];
+  savedVideos: string[];
+  watchLaterVideos: string[];
+} {
+  return (
+    user &&
+    Array.isArray(user.likedVideos) &&
+    Array.isArray(user.savedVideos) &&
+    Array.isArray(user.watchLaterVideos)
+  );
+}
 
 const MyLibraryPage = () => {
   const { currentUser, isAuthenticated } = useAuth();
-  const { getLikedVideos, getSavedVideos, getWatchLaterVideos, getHistoryVideos } = useVideos();
-  
-  const [activeTab, setActiveTab] = useState<'saved' | 'liked' | 'watch-later' | 'history'>('saved');
-  
+  const { getLikedVideos, getSavedVideos, getWatchLaterVideos } = useVideos();
+
+  const [activeTab, setActiveTab] = useState<'saved' | 'liked' | 'watch-later'>('saved');
+  const [savedVideos, setSavedVideos] = useState<Video[]>([]);
+  const [likedVideos, setLikedVideos] = useState<Video[]>([]);
+  const [watchLaterVideos, setWatchLaterVideos] = useState<Video[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchVideos = async () => {
+      setLoading(true);
+      if (!isAuthenticated || !currentUser || !isUser(currentUser)) {
+        setSavedVideos([]);
+        setLikedVideos([]);
+        setWatchLaterVideos([]);
+        setLoading(false);
+        return;
+      }
+      const saved = await getSavedVideos(currentUser.savedVideos || []);
+      const liked = await getLikedVideos(currentUser.likedVideos || []);
+      const watchLater = await getWatchLaterVideos(currentUser.watchLaterVideos || []);
+      setSavedVideos(saved);
+      setLikedVideos(liked);
+      setWatchLaterVideos(watchLater);
+      setLoading(false);
+    };
+    fetchVideos();
+  }, [isAuthenticated, currentUser, getSavedVideos, getLikedVideos, getWatchLaterVideos]);
+
   if (!isAuthenticated) {
     return (
-      <div className="container mx-auto px-4 py-12 text-center">
-        <h1 className="text-2xl font-bold mb-4">My Library</h1>
-        <p className="mb-4">Please sign in to access your library</p>
-        <a href="/login" className="btn btn-primary">Sign In</a>
+      <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-[#031B33] to-[#00111D] text-white text-center animate-fadeIn">
+        <h1 className="text-3xl font-bold mb-4">My Library</h1>
+        <p className="mb-6">🔒 Please sign in to access your library</p>
+        <a href="/login" className="px-6 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 transition-all shadow-xl hover:scale-105">Sign In</a>
       </div>
     );
   }
-  
-  const savedVideos = getSavedVideos(currentUser?.savedVideos || []);
-  const likedVideos = getLikedVideos(currentUser?.likedVideos || []);
-  const watchLaterVideos = getWatchLaterVideos(currentUser?.watchLaterVideos || []);
-  const historyVideos = getHistoryVideos(currentUser?.history || []);
+
+  if (!currentUser || !isUser(currentUser)) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-[#031B33] to-[#00111D] text-white text-center animate-fadeIn">
+        <h1 className="text-3xl font-bold mb-4">My Library</h1>
+        <p className="mb-4">⚠️ Library is only available for users.</p>
+      </div>
+    );
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-secondary text-white">
+        <p className="text-lg animate-pulse">Loading your videos...</p>
+      </div>
+    );
+  }
+
+  const renderTabContent = () => {
+    const messageClass = "text-gray-400 text-center py-6 italic";
+    if (activeTab === 'saved') {
+      return savedVideos.length ? (
+        <VideoGrid videos={savedVideos} columns={3} />
+      ) : (
+        <div className={messageClass}>📁 No saved videos yet.</div>
+      );
+    }
+    if (activeTab === 'liked') {
+      return likedVideos.length ? (
+        <VideoGrid videos={likedVideos} columns={3} />
+      ) : (
+        <div className={messageClass}>👍 No liked videos yet.</div>
+      );
+    }
+    if (activeTab === 'watch-later') {
+      return watchLaterVideos.length ? (
+        <VideoGrid videos={watchLaterVideos} columns={3} />
+      ) : (
+        <div className={messageClass}>🕒 No videos in Watch Later.</div>
+      );
+    }
+    return null;
+  };
 
   return (
-    <div className="container mx-auto px-4 py-6">
-      <h1 className="text-2xl font-bold mb-6">My Library</h1>
-      
-      {/* Library Tabs */}
-      <div className="border-b border-gray-200 mb-6">
-        <div className="flex space-x-8 overflow-x-auto">
+    <div className="min-h-screen bg-gradient-to-br from-[#031B33] to-[#00111D] text-white px-6 py-8 animate-fadeIn">
+      <h1 className="text-4xl font-extrabold text-center mb-8 drop-shadow-lg">🎬 My Library</h1>
+
+      <div className="flex justify-center mb-8 border-b border-white/10 pb-2 space-x-6">
+        {['saved', 'liked', 'watch-later'].map((tab) => (
           <button
-            onClick={() => setActiveTab('saved')}
-            className={`pb-3 px-1 font-medium ${
-              activeTab === 'saved'
-                ? 'text-primary-dark border-b-2 border-primary-dark'
-                : 'text-gray-500 hover:text-gray-700'
+            key={tab}
+            onClick={() => setActiveTab(tab as any)}
+            className={`text-lg font-semibold transition-all transform duration-300 px-4 py-2 rounded-xl shadow-sm hover:scale-105 hover:bg-white/10 backdrop-blur-sm ${
+              activeTab === tab ? 'bg-purple-600 text-white shadow-lg' : 'text-gray-300'
             }`}
           >
-            Saved Videos
+            {tab === 'saved' ? '📁 Saved' : tab === 'liked' ? '👍 Liked' : '🕒 Watch Later'}
           </button>
-          <button
-            onClick={() => setActiveTab('liked')}
-            className={`pb-3 px-1 font-medium ${
-              activeTab === 'liked'
-                ? 'text-primary-dark border-b-2 border-primary-dark'
-                : 'text-gray-500 hover:text-gray-700'
-            }`}
-          >
-            Liked Videos
-          </button>
-          <button
-            onClick={() => setActiveTab('watch-later')}
-            className={`pb-3 px-1 font-medium ${
-              activeTab === 'watch-later'
-                ? 'text-primary-dark border-b-2 border-primary-dark'
-                : 'text-gray-500 hover:text-gray-700'
-            }`}
-          >
-            Watch Later
-          </button>
-          <button
-            onClick={() => setActiveTab('history')}
-            className={`pb-3 px-1 font-medium ${
-              activeTab === 'history'
-                ? 'text-primary-dark border-b-2 border-primary-dark'
-                : 'text-gray-500 hover:text-gray-700'
-            }`}
-          >
-            History
-          </button>
-        </div>
+        ))}
       </div>
-      
-      {/* Active Tab Content */}
-      <div className="py-4">
-        {activeTab === 'saved' && (
-          <VideoGrid videos={savedVideos} columns={3} />
-        )}
-        
-        {activeTab === 'liked' && (
-          <VideoGrid videos={likedVideos} columns={3} />
-        )}
-        
-        {activeTab === 'watch-later' && (
-          <VideoGrid videos={watchLaterVideos} columns={3} />
-        )}
-        
-        {activeTab === 'history' && (
-          <VideoGrid videos={historyVideos} columns={3} />
-        )}
+
+      <div className="transition-all duration-500 ease-in-out">
+        {renderTabContent()}
       </div>
     </div>
   );

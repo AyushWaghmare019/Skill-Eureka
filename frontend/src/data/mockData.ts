@@ -1,6 +1,13 @@
 import { Video, Category } from "../context/VideoContext";
 import { Notification } from "../context/NotificationContext";
 
+import ayush from "../assets/ayush.jpg";
+import harshita from "../assets/harshita.jpg";
+import somita from "../assets/somita.jpg" ;
+import hansika from "../assets/hansika.jpg" ;
+import babita from  "../assets/babita.png" ;
+import parveenSir from "../assets/parveenSir.jpg";
+
 // Mock Users
 export const mockUsers = [
   {
@@ -185,37 +192,71 @@ export const mockCategories: Category[] = [
 export const mockTeamMembers = [
   {
     id: 'team1',
-    name: 'Dr. Anand Kumar',
-    role: 'Founder & Lead Developer',
-    bio: 'Computer Science professor at IIT Guwahati with a passion for accessible education',
-    profilePic: 'https://images.pexels.com/photos/2182970/pexels-photo-2182970.jpeg?auto=compress&cs=tinysrgb&w=600',
+    name: 'Mr. Praveen Singh ',
+    role: 'Founder & Director',
+    bio: "Founder and CEO of Bright Eureka, an educational tech startup building India’s first tablet that blocks adult content and comes preloaded with free learning resources. A national-level innovator recognized by Samsung Solve for Tomorrow, IIT Bombay, IIT Delhi, IITG and IIIT Delhi Parveen is on a mission to make education safe, accessible, and empowering for every child",
+    profilePic: parveenSir,
     socialLinks: {
-      linkedin: 'https://linkedin.com/in/anandkumar',
-      twitter: 'https://twitter.com/anandkumar',
-      github: 'https://github.com/anandkumar'
+      linkedin: 'https://www.linkedin.com/in/parveensingh623/?originalSubdomain=in',
+      instagram: 'https://www.instagram.com/bright_eureka_?igsh=bnZrbzFhNW1nczZ5' 
     }
   },
   {
     id: 'team2',
-    name: 'Dr. Priya Singh',
-    role: 'Education Director',
+    name: 'Babita Verma',
+    role: 'Project Team Lead',
     bio: 'Former high school principal with 15 years of experience in education management',
-    profilePic: 'https://images.pexels.com/photos/3767392/pexels-photo-3767392.jpeg?auto=compress&cs=tinysrgb&w=600',
+    profilePic: babita,
     socialLinks: {
-      linkedin: 'https://linkedin.com/in/priyasingh',
-      twitter: 'https://twitter.com/priyasingh'
+      linkedin: 'https://www.linkedin.com/in/babita-verma-555691284/',
+       github: 'https://github.com/babita-18', //
+      instagram: 'https://www.instagram.com/babita72_9?igsh=MWVreW11ZWR4a3o5bQ=='   //
     }
   },
   {
     id: 'team3',
-    name: 'Rahul Sharma',
+    name: 'Ayush Waghmare',
     role: 'Full Stack Developer',
     bio: 'IIT Guwahati graduate with expertise in React, Node.js and cloud infrastructure',
-    profilePic: 'https://images.pexels.com/photos/1681010/pexels-photo-1681010.jpeg?auto=compress&cs=tinysrgb&w=600',
+    profilePic: ayush,
     socialLinks: {
-      linkedin: 'https://linkedin.com/in/rahulsharma',
-      github: 'https://github.com/rahulsharma',
-      twitter: 'https://twitter.com/rahulsharma'
+      linkedin: 'https://www.linkedin.com/in/ayush-waghmare-28a7912a2?utm_source=share&utm_campaign=share_via&utm_content=profile&utm_medium=android_app',
+      github: 'https://github.com/rahulsharma', //
+      instagram: 'https://www.instagram.com/_aayush.19?igsh=YW1ubGE2ZGxlcGU3'   //
+    }
+  }, 
+  ,
+  {
+    id: 'team2',
+    name: 'Hansika Jaiswal',
+    role: 'UI UX Designer',
+    bio: 'UI UX designer',
+    profilePic: hansika,
+    socialLinks: {
+      
+    }
+  },
+   {
+    id: 'team4',
+    name: 'Harshita Sharma',
+    role: 'Frontend Developer',
+    bio: 'IIT Guwahati graduate with expertise in React',
+    profilePic: harshita,
+    socialLinks: {
+      linkedin: 'https://www.linkedin.com/in/harshita-sharma-310702346?utm_source=share&utm_campaign=share_via&utm_content=profile&utm_medium=android_app',
+      github: 'https://github.com/harshitasharma111', //
+      instagram: 'https://www.instagram.com/harshhhitaa_?igsh=MW1ibG4xZHh2Mjc1OA=='   //
+    }
+  },  {
+    id: 'team5',
+    name: 'Somita Agarwal',
+    role: 'Frontend Developer',
+    bio: '',
+    profilePic: somita,
+    socialLinks: {
+      linkedin: 'https://www.linkedin.com/in/somita-agarwal-74723031b/',
+      github: 'https://github.com/Somita489',//
+      instagram: 'https://www.instagram.com/somita9546/'   //
     }
   }
 ];
