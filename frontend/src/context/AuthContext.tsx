@@ -298,18 +298,41 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   // --- APPLY AS CREATOR ---
-  const applyAsCreator = async (data: { name: string; email: string; youtubeChannel?: string; reason: string }) => {
-    try {
-      // If you have an API endpoint, use it:
-      // const res = await authAPI.applyCreator(data);
-      // return res.data.confirmationCode;
+  // const applyAsCreator = async (data: { name: string; email: string; youtubeChannel?: string; reason: string }) => {
+  //   try {
+  //     // If you have an API endpoint, use it:
+  //     // const res = await authAPI.applyCreator(data);
+  //     // return res.data.confirmationCode;
 
-      // For now, return a mock confirmation code:
-      return Math.random().toString(36).substring(2, 10);
-    } catch (error) {
-      throw new Error('Failed to apply as creator');
-    }
-  };
+  //     // For now, return a mock confirmation code:
+  //     return Math.random().toString(36).substring(2, 10);
+  //   } catch (error) {
+  //     throw new Error('Failed to apply as creator');
+  //   }
+  // };
+
+const applyAsCreator = async ({
+  name,
+  email,
+  youtubeChannel,
+  reason,
+}: { name: string; email: string; youtubeChannel?: string; reason: string }): Promise<string> => {
+  try {
+    const response = await authAPI.applyCreator({
+      username: name, // : send as `username`, because in frontend we use `name` as username
+      email,
+      youtubeChannel,
+      reason,
+    });
+    // If your backend returns a confirmation code or message, return it here:
+    // return response.data.confirmationCode || 'Application submitted successfully';
+    // If not, return a generic success message:
+    return 'Application submitted successfully';
+  } catch (err) {
+    throw new Error('Failed to apply as creator');
+  }
+};
+
 
   // --- VERIFY CREATOR ---
   const verifyCreator = async (email: string, confirmationCode: string): Promise<boolean> => {
