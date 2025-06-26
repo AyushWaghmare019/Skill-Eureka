@@ -15,6 +15,8 @@ import uploadRouter from './routes/upload.js';
 const id = uuidv4();
 const app = express();
 
+// mongoose.set('debug', true);  
+
 app.use(cors());
 app.use(express.json());
 app.use('/uploads', express.static('uploads'));

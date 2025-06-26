@@ -2,8 +2,39 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import Creator from '../models/Creator.js';
 import crypto from 'crypto';
-
+import { CreatorApplication } from '../models/CreatorApplication.js';
 // Creator Signup Controller
+
+// creating application for creator
+export const creatorApplicationController = async (req, res) => {
+  const { username, email,youtubeChannel,reason } = req.body
+  console.log("Controller reached")
+  try {
+    // Check if the creator already exists
+    let existingCreator = await Creator.findOne({ username });
+    if (existingCreator) {
+      return res.status(400).json({ message: 'Username already exists' });
+    }
+
+    // Create a new creator application
+    const newApplication = new CreatorApplication({
+      username,
+      email,
+      youtubeChannel,
+      reason,
+      isVerified: false, // Not verified until admin approves
+      applicationDate: new Date()
+    });
+    console.log('Saving application for', username);
+
+    await newApplication.save();
+
+    res.status(201).json({ message: 'Application submitted successfully' });
+  }catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Server error' });
+  }
+} 
 export const signupCreatorController = async (req, res) => {
   const {
     name,
