@@ -1,14 +1,95 @@
 import { CreatorApplication } from '../models/CreatorApplication.js';
-
-// USER REGISTRATION (placeholder)
+import User from '../models/User.js';
+import bcrypt from 'bcryptjs';
 export const signupUserController = async (req, res) => {
-  res.status(200).json({ message: 'User signup placeholder.' });
+  try {
+    const { username, email, password, name, bio, profilePic } = req.body;
+
+    // Check if user already exists
+    const existingUser = await User.findOne({
+      $or: [{ email }, { username }]
+    });
+
+    if (existingUser) {
+      return res.status(400).json({ message: 'Email or username already exists' });
+    }
+
+    // ✅ DO NOT HASH password here — model will do it
+    const newUser = new User({
+      username,
+      email,
+      password, // raw password
+      name,
+      bio,
+      profilePic
+    });
+
+    await newUser.save();
+
+    res.status(201).json({
+      message: 'User registered successfully',
+      user: {
+        id: newUser._id,
+        username: newUser.username,
+        email: newUser.email,
+        name: newUser.name,
+        bio: newUser.bio,
+        profilePic: newUser.profilePic
+      }
+    });
+  } catch (error) {
+    console.error('Signup error:', error);
+    res.status(500).json({ message: 'Server error during signup' });
+  }
 };
 
-// USER LOGIN (placeholder)
+
+
 export const login = async (req, res) => {
-  res.status(200).json({ message: 'User login placeholder.' });
+  try {
+    const { emailOrUsername, password } = req.body;
+
+    console.log("🟡 Request body:", { emailOrUsername, password });
+
+    const user = await User.findOne({
+      $or: [{ email: emailOrUsername }, { username: emailOrUsername }]
+    });
+
+    if (!user) {
+      console.log("❌ No user found with email/username:", emailOrUsername);
+      return res.status(400).json({ message: 'Invalid email/username or password' });
+    }
+
+    console.log("✅ User found:", user.username);
+    console.log("👉 Hashed password in DB:", user.password);
+
+    const isMatch = await bcrypt.compare(password, user.password);
+
+    console.log("🔍 Password match result:", isMatch);
+
+    if (!isMatch) {
+      console.log("❌ Password does not match.");
+      return res.status(400).json({ message: 'Invalid email/username or password' });
+    }
+
+    res.status(200).json({
+      message: 'Login successful',
+      user: {
+        id: user._id,
+        username: user.username,
+        email: user.email,
+        name: user.name,
+        bio: user.bio,
+        profilePic: user.profilePic
+      }
+    });
+
+  } catch (error) {
+    console.error('🔥 Login error:', error);
+    res.status(500).json({ message: 'Server error during login' });
+  }
 };
+
 
 // USER FORGOT PASSWORD (placeholder)
 export const forgotPassword = async (req, res) => {
