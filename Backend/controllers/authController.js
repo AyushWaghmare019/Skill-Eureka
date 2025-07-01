@@ -1,5 +1,9 @@
 import { CreatorApplication } from '../models/CreatorApplication.js';
 import User from '../models/User.js';
+import Creator from '../models/Creator.js';
+import CreatorCode from '../models/CreatorCode.js';
+
+
 import bcrypt from 'bcryptjs';
 export const signupUserController = async (req, res) => {
   try {
@@ -102,14 +106,114 @@ export const forgotPassword = async (req, res) => {
 };
 
 // CREATOR REGISTRATION (placeholder)
+
+
+
 export const signupCreatorController = async (req, res) => {
-  res.status(200).json({ message: 'Creator signup placeholder.' });
+  try {
+    const {
+      username,
+      email,
+      password,
+      confirmationCode,
+      name,
+      bio,
+      profilePic,
+      youtubeChannel,
+      instagramHandle,
+      linkedinProfile
+    } = req.body;
+
+    // 1. Validate confirmation code
+    const codeDoc = await CreatorCode.findOne({
+      email,
+      confirmationCode,
+      isUsed: false
+    });
+
+    if (!codeDoc) {
+      return res.status(400).json({ message: 'Invalid or already-used confirmation code.' });
+    }
+
+    // 2. Check if creator already exists
+    const existingCreator = await Creator.findOne({ $or: [{ email }, { username }] });
+    if (existingCreator) {
+      return res.status(409).json({ message: 'Creator already exists with this email or username.' });
+    }
+
+    // 3. Hash password
+    const hashedPassword = password;
+
+    // 4. Create creator with confirmationCode
+    const creator = await Creator.create({
+      username,
+      email,
+      password: hashedPassword,
+      confirmationCode,  // ✅ required in schema
+      name,
+      bio,
+      profilePic,
+      youtubeChannel,
+      instagramHandle,
+      linkedinProfile,
+      isVerified: true    // Optional: mark as verified immediately
+    });
+
+    // 5. Mark code as used
+    codeDoc.isUsed = true;
+    await codeDoc.save();
+
+    res.status(201).json({ message: 'Creator registered successfully.', creatorId: creator._id });
+
+  } catch (err) {
+    console.error('Signup Error:', err);
+    res.status(500).json({ message: 'Server error during creator registration.' });
+  }
 };
+
 
 // CREATOR LOGIN (placeholder)
 export const loginCreator = async (req, res) => {
-  res.status(200).json({ message: 'Creator login placeholder.' });
+  const { username, password } = req.body;
+
+  try {
+    const creator = await Creator.findOne({ username });
+
+    if (!creator) {
+      return res.status(404).json({ message: 'Creator not found.' });
+    }
+
+    const isMatch = await bcrypt.compare(password, creator.password);
+    if (!isMatch) {
+      return res.status(401).json({ message: 'Invalid password.' });
+    }
+
+    if (!creator.isVerified) {
+      return res.status(403).json({ message: 'Account not verified.' });
+    }
+
+    // No JWT: Just return creator info
+    res.status(200).json({
+      message: 'Login successful',
+      creator: {
+        id: creator._id,
+        name: creator.name,
+        email: creator.email,
+        username: creator.username,
+        bio: creator.bio,
+        profilePic: creator.profilePic,
+        youtubeChannel: creator.youtubeChannel,
+        instagramHandle: creator.instagramHandle,
+        linkedinProfile: creator.linkedinProfile,
+        isVerified: creator.isVerified
+      }
+    });
+  } catch (error) {
+    console.error('Login Creator Error:', error);
+    res.status(500).json({ message: 'Server error during creator login' });
+  }
 };
+
 
 // CREATOR FORGOT PASSWORD (placeholder)
 export const forgotPasswordCreator = async (req, res) => {
