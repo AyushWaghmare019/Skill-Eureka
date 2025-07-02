@@ -112,8 +112,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         ? await authAPI.loginCreator(username, password)
         : await authAPI.loginUser(username, password);
 
-      const { token, user, creator } = response.data;
-      localStorage.setItem('authToken', token);
+      const {  user, creator } = response.data;
+      //localStorage.setItem('authToken', token);
 
       if (type === 'creator') {
         let creatorProfile = creator;
