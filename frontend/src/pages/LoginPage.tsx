@@ -206,7 +206,7 @@ const LoginPage = () => {
   );
 
 
-/*
+
   return (
     <div className="min-h-[80vh] flex items-center justify-center bg-gray-50">
       <div className="w-full max-w-md p-8 bg-white rounded-lg shadow-card">
@@ -289,9 +289,7 @@ const LoginPage = () => {
         </div>
       </div>
     </div>
-  ); */
-
-
+  ); 
 };
 
 export default LoginPage;

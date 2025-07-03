@@ -198,7 +198,7 @@ export const mockTeamMembers = [
     profilePic: parveenSir,
     socialLinks: {
       linkedin: 'https://www.linkedin.com/in/parveensingh623/?originalSubdomain=in',
-      instagram: 'https://www.instagram.com/bright_eureka_?igsh=bnZrbzFhNW1nczZ5' 
+      instagram: 'https://www.instagram.com/_harvey._.specter?igsh=MThxZW9nbnJ0aWJiOQ==' 
     }
   },
   {

@@ -22,63 +22,41 @@ const ProfilePage = () => {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const fetchProfile = async () => {
-      if (!isAuthenticated || !currentUser) {
-        setProfile(null);
-        setLoading(false);
-        return;
-      }
-      setLoading(true);
-      setError(null);
+  async function fetchProfile() {
+    if (!currentUser) { setLoading(false); return; }
 
-      try {
-        if (isCreator) {
-          const res = await creatorAPI.getById(currentUser.id);
-          if (!res.data || !res.data.username) {
-            setError('No creator found.');
-            setProfile(null);
-          } else {
-            setProfile({
-              id: res.data.id || res.data._id,
-              username: res.data.username,
-              email: res.data.email ?? '',
-              name: res.data.name,
-              bio: res.data.bio ?? '',
-              profilePic: res.data.profilePic ?? '',
-              type: 'creator',
-            });
-          }
-        } else {
-          const res = await userAPI.getProfile();
-          if (!res.data || !res.data.username) {
-            setError('No user found.');
-            setProfile(null);
-          } else {
-            setProfile({
-              id: res.data.id || res.data._id,
-              username: res.data.username,
-              email: res.data.email ?? '',
-              name: res.data.name,
-              bio: res.data.bio ?? '',
-              profilePic: res.data.profilePic ?? '',
-              type: 'user',
-            });
-          }
-        }
-      } catch (err: any) {
-        setError(
-          err?.response?.data?.message ||
-          err?.response?.data?.error ||
-          err.message ||
-          'Failed to load profile.'
-        );
-        setProfile(null);
-      } finally {
-        setLoading(false);
+    setError(null);
+    setLoading(true);
+
+    try {
+      const res = isCreator
+        ? await creatorAPI.getById(currentUser.id)
+        : await userAPI.getProfile();
+
+      if (!res.data.username) {
+        setError('Failed to load profile.');
+      } else {
+        setProfile({
+          id: res.data.id || res.data._id,
+          username: res.data.username,
+          email: res.data.email || '',
+          name: res.data.name,
+          bio: res.data.bio || '',
+          profilePic: res.data.profilePic || '',
+          type: isCreator ? 'creator' : 'user',
+        });
       }
-    };
-    fetchProfile();
-  }, [isAuthenticated, isCreator, currentUser?.id]);
+    } catch (err) {
+      console.error('Profile fetch failed', err);
+      setError('Failed to fetch profile.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  fetchProfile();
+}, [currentUser, isCreator]);
+
 
   if (!isAuthenticated) {
     return <Navigate to="/login" />;

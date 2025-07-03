@@ -94,7 +94,10 @@ const RegisterPage = () => {
         await authAPI.registerUser(registrationPayload);
         setSuccess('User registered successfully! You can now log in.');
       }
-      setTimeout(() => navigate('/login'), 1500);
+      setTimeout(() => {
+  setLoading(false); // stop showing "Registering..."
+  navigate('/login');
+}, 1500);
     } catch (err) {
       if (
         err &&

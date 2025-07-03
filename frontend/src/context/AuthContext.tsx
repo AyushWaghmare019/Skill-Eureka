@@ -67,11 +67,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isCreator, setIsCreator] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  // Rehydrate from localStorage on load
   useEffect(() => {
     const savedUser = localStorage.getItem('currentUser');
-    const savedToken = localStorage.getItem('authToken');
-    if (savedUser && savedToken) {
+    if (savedUser) {
       const user = JSON.parse(savedUser);
       setCurrentUser(user);
       setIsAuthenticated(true);
@@ -80,31 +78,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setLoading(false);
   }, []);
 
-  // Always keep localStorage in sync when currentUser changes
   useEffect(() => {
     if (currentUser && isAuthenticated) {
       localStorage.setItem('currentUser', JSON.stringify(currentUser));
     }
   }, [currentUser, isAuthenticated]);
-
-  const refreshUserData = async () => {
-    try {
-      if (!currentUser) return;
-      if (currentUser.isCreator) {
-        const response = await creatorAPI.getById(currentUser.id);
-        const updated = { ...response.data, isCreator: true };
-        setCurrentUser(updated);
-        localStorage.setItem('currentUser', JSON.stringify(updated));
-      } else {
-        const response = await userAPI.getProfile();
-        const updated = { ...response.data, isCreator: false };
-        setCurrentUser(updated);
-        localStorage.setItem('currentUser', JSON.stringify(updated));
-      }
-    } catch (error) {
-      console.error('Failed to refresh user data:', error);
-    }
-  };
 
   const login = async (username: string, password: string, type: 'user' | 'creator' = 'user') => {
     try {
@@ -112,35 +90,25 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         ? await authAPI.loginCreator(username, password)
         : await authAPI.loginUser(username, password);
 
-      const {  user, creator } = response.data;
-      //localStorage.setItem('authToken', token);
+      const { user, creator } = response.data;
 
-      if (type === 'creator') {
-        let creatorProfile = creator;
-        if (!creatorProfile) {
-          const profileRes = await creatorAPI.getById(response.data.id);
-          creatorProfile = profileRes.data;
-        }
-        const creatorUser = { ...creatorProfile, isCreator: true };
+      if (type === 'creator' && creator) {
+        const creatorUser = { ...creator, isCreator: true };
         setCurrentUser(creatorUser);
         setIsCreator(true);
-        setIsAuthenticated(true);
-        localStorage.setItem('currentUser', JSON.stringify(creatorUser));
-      } else {
-        let userProfile = user;
-        if (!userProfile) {
-          const profileRes = await userAPI.getProfile();
-          userProfile = profileRes.data;
-        }
-        const normalUser = { ...userProfile, isCreator: false };
+      } else if (user) {
+        const normalUser = { ...user, isCreator: false };
         setCurrentUser(normalUser);
         setIsCreator(false);
-        setIsAuthenticated(true);
-        localStorage.setItem('currentUser', JSON.stringify(normalUser));
+      } else {
+        console.error('Login response missing user data');
+        return false;
       }
+
+      setIsAuthenticated(true);
       return true;
-    } catch (error) {
-      console.error('Login error:', error);
+    } catch (err) {
+      console.error('Login failed', err);
       return false;
     }
   };
@@ -151,32 +119,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         ? await authAPI.registerCreator(userData)
         : await authAPI.registerUser(userData);
 
-      const { token, user, creator } = response.data;
-      localStorage.setItem('authToken', token);
+      const { user, creator } = response.data;
 
-      if (type === 'creator') {
-        let creatorProfile = creator;
-        if (!creatorProfile) {
-          const profileRes = await creatorAPI.getById(response.data.id);
-          creatorProfile = profileRes.data;
-        }
-        const creatorUser = { ...creatorProfile, isCreator: true };
+      if (type === 'creator' && creator) {
+        const creatorUser = { ...creator, isCreator: true };
         setCurrentUser(creatorUser);
         setIsCreator(true);
-        setIsAuthenticated(true);
-        localStorage.setItem('currentUser', JSON.stringify(creatorUser));
-      } else {
-        let userProfile = user;
-        if (!userProfile) {
-          const profileRes = await userAPI.getProfile();
-          userProfile = profileRes.data;
-        }
-        const normalUser = { ...userProfile, isCreator: false };
+      } else if (user) {
+        const normalUser = { ...user, isCreator: false };
         setCurrentUser(normalUser);
         setIsCreator(false);
-        setIsAuthenticated(true);
-        localStorage.setItem('currentUser', JSON.stringify(normalUser));
       }
+
+      setIsAuthenticated(true);
       return true;
     } catch (error) {
       console.error('Signup error:', error);
@@ -188,8 +143,24 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setCurrentUser(null);
     setIsAuthenticated(false);
     setIsCreator(false);
-    localStorage.removeItem('authToken');
     localStorage.removeItem('currentUser');
+  };
+
+  const refreshUserData = async () => {
+    try {
+      if (!currentUser) return;
+      if (currentUser.isCreator) {
+        const response = await creatorAPI.getById(currentUser.id);
+        const updated = { ...response.data, isCreator: true };
+        setCurrentUser(updated);
+      } else {
+        const response = await userAPI.getProfile();
+        const updated = { ...response.data, isCreator: false };
+        setCurrentUser(updated);
+      }
+    } catch (error) {
+      console.error('Failed to refresh user data:', error);
+    }
   };
 
   const updateUserProfile = async (userData: Partial<User>, profilePic?: File) => {
@@ -203,7 +174,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const response = await userAPI.updateProfile(updateData);
       const updatedUser = { ...currentUser, ...response.data.user };
       setCurrentUser(updatedUser as CurrentUser);
-      localStorage.setItem('currentUser', JSON.stringify(updatedUser));
       return true;
     } catch (error) {
       console.error('Update profile error:', error);
@@ -215,7 +185,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     try {
       const response = await creatorAPI.getById(creatorId);
       return response.data;
-    } catch (error) {
+    } catch {
       return null;
     }
   };
@@ -238,7 +208,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  // --- VIDEO ACTIONS ---
   const likeVideo = async (videoId: string) => {
     try {
       await userAPI.likeVideo(videoId);
@@ -267,14 +236,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const unsaveVideo = async (videoId: string) => {
-    try {
-      // Implement if you have an endpoint, otherwise leave as a stub
-      // await userAPI.unsaveVideo(videoId);
-      // await refreshUserData();
-      console.warn('unsaveVideo not implemented');
-    } catch (error) {
-      console.error('Unsave video error:', error);
-    }
+    console.warn('unsaveVideo not implemented');
   };
 
   const addToWatchLater = async (videoId: string) => {
@@ -287,59 +249,23 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const removeFromWatchLater = async (videoId: string) => {
+    console.warn('removeFromWatchLater not implemented');
+  };
+
+  const applyAsCreator = async ({ name, email, youtubeChannel, reason }: { name: string; email: string; youtubeChannel?: string; reason: string }): Promise<string> => {
     try {
-      // Implement if you have an endpoint, otherwise leave as a stub
-      // await userAPI.removeFromWatchLater(videoId);
-      // await refreshUserData();
-      console.warn('removeFromWatchLater not implemented');
-    } catch (error) {
-      console.error('Remove from watch later error:', error);
+      await authAPI.applyCreator({ username: name, email, youtubeChannel, reason });
+      return 'Application submitted successfully';
+    } catch {
+      throw new Error('Failed to apply as creator');
     }
   };
 
-  // --- APPLY AS CREATOR ---
-  // const applyAsCreator = async (data: { name: string; email: string; youtubeChannel?: string; reason: string }) => {
-  //   try {
-  //     // If you have an API endpoint, use it:
-  //     // const res = await authAPI.applyCreator(data);
-  //     // return res.data.confirmationCode;
-
-  //     // For now, return a mock confirmation code:
-  //     return Math.random().toString(36).substring(2, 10);
-  //   } catch (error) {
-  //     throw new Error('Failed to apply as creator');
-  //   }
-  // };
-
-const applyAsCreator = async ({
-  name,
-  email,
-  youtubeChannel,
-  reason,
-}: { name: string; email: string; youtubeChannel?: string; reason: string }): Promise<string> => {
-  try {
-    const response = await authAPI.applyCreator({
-      username: name, // : send as `username`, because in frontend we use `name` as username
-      email,
-      youtubeChannel,
-      reason,
-    });
-    // If your backend returns a confirmation code or message, return it here:
-    // return response.data.confirmationCode || 'Application submitted successfully';
-    // If not, return a generic success message:
-    return 'Application submitted successfully';
-  } catch (err) {
-    throw new Error('Failed to apply as creator');
-  }
-};
-
-
-  // --- VERIFY CREATOR ---
   const verifyCreator = async (email: string, confirmationCode: string): Promise<boolean> => {
     try {
       await authAPI.verifyCreator(email, confirmationCode);
       return true;
-    } catch (error) {
+    } catch {
       return false;
     }
   };
