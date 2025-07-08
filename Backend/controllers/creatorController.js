@@ -50,7 +50,7 @@ export const signupCreatorController = async (req, res) => {
     let c = await Creator.findOne({ username });
     if (c) return res.status(400).json({ message: 'Username taken' });
 
-    const hash = await bcrypt.hash(password, 12);
+   
 
     // Generate a secure confirmation code
     const confirmationCode = crypto.randomBytes(4).toString('hex').toUpperCase(); // 8-char code
