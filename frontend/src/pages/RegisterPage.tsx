@@ -221,7 +221,7 @@ const RegisterPage = () => {
                 name="youtubeChannel"
                 value={form.youtubeChannel as string}
                 onChange={handleChange}
-                className="input"
+                className="w-full px-4 py-2 bg-[#15334A] text-white rounded-lg border border-cyan-400 focus:outline-none focus:ring-2 focus:ring-cyan-400 transition-all"
               />
             </div>
             <div className="mb-4">
@@ -231,7 +231,7 @@ const RegisterPage = () => {
                 name="instagramHandle"
                 value={form.instagramHandle as string}
                 onChange={handleChange}
-                className="input"
+                className="w-full px-4 py-2 bg-[#15334A] text-white rounded-lg border border-cyan-400 focus:outline-none focus:ring-2 focus:ring-cyan-400 transition-all"
               />
             </div>
             <div className="mb-4">
@@ -241,7 +241,7 @@ const RegisterPage = () => {
                 name="linkedinProfile"
                 value={form.linkedinProfile as string}
                 onChange={handleChange}
-                className="input"
+                className="w-full px-4 py-2 bg-[#15334A] text-white rounded-lg border border-cyan-400 focus:outline-none focus:ring-2 focus:ring-cyan-400 transition-all"
               />
             </div>
             {/* Confirmation Code */}
